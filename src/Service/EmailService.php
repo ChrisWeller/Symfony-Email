@@ -1,12 +1,19 @@
 <?php
 namespace PrimeSoftware\Service;
 
+use Twig\Environment;
+
 abstract class EmailService {
 
 	/**
 	 * @var \Swift_Mailer
 	 */
 	private $mailer;
+
+	/**
+	 * @var Environment
+	 */
+	private $twig;
 
 	/**
 	 * Email address to send emails from
@@ -20,8 +27,15 @@ abstract class EmailService {
 	 */
 	protected $fromName = 'Test';
 
-	public function __construct( \Swift_Mailer $mailer ) {
+	/**
+	 * Holds the twig file used when generating emails
+	 * @var string
+	 */
+	protected $baseTemplate = 'email.twig';
+
+	public function __construct( \Swift_Mailer $mailer, Environment $twig ) {
 		$this->mailer = $mailer;
+		$this->twig = $twig;
 	}
 
 	/**
@@ -38,6 +52,16 @@ abstract class EmailService {
 	}
 
 	/**
+	 * Sets the template to use for generating the emails
+	 * @param $template
+	 */
+	public function setTwigTemplate( $template ) {
+		$this->baseTemplate = $template;
+
+		return $this;
+	}
+
+	/**
 	 * @param $dest_email
 	 * @param $dest_name
 	 * @param $subject
@@ -48,10 +72,13 @@ abstract class EmailService {
 	 */
 	public function send_email( $dest_email, $dest_name, $subject, $body, $attachements = [], $params = [] ) {
 
-		// Iterate over the parameters
-		foreach( $params as $code => $value ) {
-			$body = preg_replace('/\{\{ ?' . $code . ' ?\}\}/', $value, $body);
-		}
+		$params[ 'template' ] = $subject;
+		// Generate the html for the subject
+		$subject = $this->twig->render( $this->baseTemplate, $params );
+
+		$params[ 'template' ] = $body;
+		// Generate the html for the body
+		$body = $this->twig->render( $this->baseTemplate, $params );
 
 		// Build the message
 		$message = ( new \Swift_Message( $subject ) )
