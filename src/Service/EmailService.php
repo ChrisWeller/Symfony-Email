@@ -2,11 +2,13 @@
 namespace PrimeSoftware\Service;
 
 use Twig\Environment;
+use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\Email;
 
 abstract class EmailService {
 
 	/**
-	 * @var \Swift_Mailer
+	 * @var MailerInterface
 	 */
 	private $mailer;
 
@@ -33,7 +35,7 @@ abstract class EmailService {
 	 */
 	protected $baseTemplate = 'email.twig';
 
-	public function __construct( \Swift_Mailer $mailer, Environment $twig ) {
+	public function __construct( MailerInterface $mailer, Environment $twig ) {
 		$this->mailer = $mailer;
 		$this->twig = $twig;
 	}
@@ -81,24 +83,26 @@ abstract class EmailService {
 		$body = $this->twig->render( $this->baseTemplate, $params );
 
 		// Build the message
-		$message = ( new \Swift_Message( $subject ) )
-			->setFrom( $this->fromEmail, $this->fromName )
-			->setTo( $dest_email, $dest_name )
-			->setBody(
-				$body,
-				'text/html'
-			);
+		$message = ( new Email( ) )
+			->from( $this->fromEmail, $this->fromName )
+			->to( $dest_email, $dest_name )
+			->subject( $subject )
+			->html( $body );
 
-		foreach( $attachements as $attachement ) {
-			// Create the attachment and call its setFilename() method
-			$attachment_obj = \Swift_Attachment::fromPath( $attachement['path'], (isset($attachement[ 'type' ]) ? $attachement[ 'type' ] : null) )
-				->setFilename( $attachement['name'] );
-
-			$message->attach( $attachment_obj );
+		if ( $attachements !== null ) {
+			foreach ($attachements as $attachement) {
+				$message->attach(fopen($attachement['path'], 'r'));
+			}
 		}
 
-		$result = $this->mailer->send( $message );
+		try {
+			$this->mailer->send($message);
 
-		return $result;
+			return true;
+		}
+		catch( TransportExceptionInterface $e ) {
+			echo $e->getMessage() . "\n";
+			return false;
+		}
 	}
 }
