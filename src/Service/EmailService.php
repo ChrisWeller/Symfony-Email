@@ -1,6 +1,7 @@
 <?php
 namespace PrimeSoftware\Service;
 
+use Symfony\Component\Mime\Address;
 use Twig\Environment;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
@@ -84,8 +85,8 @@ abstract class EmailService {
 
 		// Build the message
 		$message = ( new Email( ) )
-			->from( $this->fromEmail, $this->fromName )
-			->to( $dest_email, $dest_name )
+			->from( new Address( $this->fromEmail, $this->fromName ) )
+			->to( new Address( $dest_email, $dest_name ) )
 			->subject( $subject )
 			->html( $body );
 
